@@ -1,3 +1,4 @@
+import glob
 import os
 
 from rtslib_fb.target import Target, TPG, NetworkPortal, LUN
@@ -7,7 +8,7 @@ from rtslib_fb.alua import ALUATargetPortGroup
 
 import ceph_iscsi_config.settings as settings
 
-from ceph_iscsi_config.gateway_setting import TGT_SETTINGS
+from ceph_iscsi_config.gateway_setting import TGT_SETTINGS, TGT_KERNEL_SETTINGS
 from ceph_iscsi_config.utils import (normalize_ip_address, normalize_ip_literal,
                                      ip_addresses, this_host, format_lio_yes_no,
                                      CephiSCSIError, CephiSCSIInval)
@@ -28,7 +29,7 @@ class GWTarget(GWObject):
 
     # Settings for all transport/fabric objects. Using this allows apps like
     # gwcli to get/set all tpgs/clients under the target instead of per obj.
-    SETTINGS = TGT_SETTINGS
+    SETTINGS = dict(list(TGT_SETTINGS.items()) + list(TGT_KERNEL_SETTINGS.items()))
 
     def __init__(self, logger, iqn, gateway_ip_list, enable_portal=True):
         """
@@ -165,6 +166,21 @@ class GWTarget(GWObject):
                               str(self.max_recv_data_segment_length))
             tpg.set_parameter('MaxXmitDataSegmentLength',
                               str(self.max_xmit_data_segment_length))
+
+            paths = glob.glob("{}/{}/{}".format('/sys/kernel/config/target',
+                                                'iscsi',
+                                                '{}/tpgt_*/attrib'.format(self.iqn)))
+            for base in paths:
+                for attr in TGT_KERNEL_SETTINGS:
+                    path = base + "/" + attr
+                    self.logger.debug("TPG attribute path {}".format(path))
+                    if not os.path.isfile(path):
+                        raise RuntimeError("No such attribute {}".format(attr))
+                    content = open(path).read().rstrip('\n')
+                    if getattr(self, attr) != content:
+                        self.logger.info("Setting {} to {}".format(attr, getattr(self, attr)))
+                        with open(path, "w") as file_attr:
+                            file_attr.write(str(getattr(self, attr)) + "\n")
 
     def enable_active_tpg(self, config):
         """

@@ -1,16 +1,19 @@
+import glob
+import os
 import rados
 import rbd
 import re
+import subprocess
 
 from time import sleep
 
-from rtslib_fb import UserBackedStorageObject, root
+from rtslib_fb import UserBackedStorageObject, RBDStorageObject, root
 from rtslib_fb.utils import RTSLibError
 
 import ceph_iscsi_config.settings as settings
 
-from ceph_iscsi_config.gateway_setting import TCMU_SETTINGS
-from ceph_iscsi_config.backstore import USER_RBD
+from ceph_iscsi_config.gateway_setting import TCMU_SETTINGS, KERNEL_SETTINGS
+from ceph_iscsi_config.backstore import USER_RBD, RBD
 from ceph_iscsi_config.utils import (convert_2_bytes, gen_control_string,
                                      valid_size, get_pool_id, ip_addresses,
                                      get_pools, get_rbd_size, this_host,
@@ -27,7 +30,15 @@ __author__ = 'pcuzner@redhat.com'
 class RBDDev(object):
 
     unsupported_features_list = {
-        USER_RBD: []
+        USER_RBD: [],
+        RBD: [
+            # TODO Uncomment after PR https://github.com/ceph/ceph/pull/28009
+            # 'RBD_FEATURE_MIGRATING',
+            'RBD_FEATURE_OBJECT_MAP',
+            'RBD_FEATURE_FAST_DIFF',
+            'RBD_FEATURE_DEEP_FLATTEN',
+            'RBD_FEATURE_JOURNALING'
+        ]
     }
 
     default_features_list = {
@@ -37,13 +48,17 @@ class RBDDev(object):
             'RBD_FEATURE_OBJECT_MAP',
             'RBD_FEATURE_FAST_DIFF',
             'RBD_FEATURE_DEEP_FLATTEN'
+        ],
+        RBD: [
+            'RBD_FEATURE_LAYERING'
         ]
     }
 
     required_features_list = {
         USER_RBD: [
             'RBD_FEATURE_EXCLUSIVE_LOCK'
-        ]
+        ],
+        RBD: []
     }
 
     def __init__(self, image, size, backstore, pool=None):
@@ -280,13 +295,15 @@ class RBDDev(object):
 
 class LUN(GWObject):
     BACKSTORES = [
-        USER_RBD
+        USER_RBD,
+        RBD
     ]
 
-    DEFAULT_BACKSTORE = USER_RBD
+    DEFAULT_BACKSTORE = RBD
 
     SETTINGS = {
-        USER_RBD: TCMU_SETTINGS
+        USER_RBD: TCMU_SETTINGS,
+        RBD: KERNEL_SETTINGS
     }
 
     def __init__(self, logger, pool, image, size, allocating_host,
@@ -858,6 +875,9 @@ class LUN(GWObject):
         if self.backstore == USER_RBD:
             new_lun = self._add_dev_to_lio_user_rbd(in_wwn)
 
+        elif self.backstore == RBD:
+            new_lun = self._add_dev_to_lio_rbd(in_wwn)
+
         else:
             raise CephiSCSIError("Error adding device to lio - "
                                  "Unsupported backstore {}".format(self.backstore))
@@ -925,6 +945,75 @@ class LUN(GWObject):
 
         return new_lun
 
+    def _add_dev_to_lio_rbd(self, in_wwn=None):
+        """
+        Add an rbd device to the LIO configuration ('RBD')
+        :param in_wwn: optional wwn identifying the rbd image to clients
+        (must match across gateways)
+        :return: LIO LUN object
+        """
+        new_lun = None
+        try:
+            self._load_modules()
+            self._rbd_device_map()
+            dev = '/dev/rbd/{}/{}'.format(self.pool, self.image)
+            new_lun = RBDStorageObject(name=self.backstore_object_name,
+                                       dev=dev,
+                                       wwn=in_wwn)
+
+        except (RTSLibError, IOError) as err:
+            self.error = True
+            self.error_msg = ("failed to add {} to LIO - "
+                              "error({})".format(self.config_key,
+                                                 str(err)))
+            self.logger.error(self.error_msg)
+            return None
+
+        self._set_controls()
+
+        return new_lun
+
+    def _set_controls(self):
+        paths = glob.glob("{}/{}/{}".format('/sys/kernel/config/target',
+                                            'core',
+                                            'rbd_*/{}/attrib'.format(self.backstore_object_name)))
+        for base in paths:
+            for attr in self.controls.keys():
+                path = base + "/" + attr
+                self.logger.debug("Backstore attribute path {}".format(path))
+                if not os.path.isfile(path):
+                    raise RuntimeError("No such attribute {}".format(attr))
+                content = open(path).read().rstrip('\n')
+                if self.controls[attr] != content:
+                    self.logger.info("Setting {} to {}".format(attr, self.controls[attr]))
+                    with open(path, "w") as file_attr:
+                        file_attr.write(str(self.controls[attr]) + "\n")
+
+    def _load_modules(self):
+        modules = ["iscsi_target_mod", "target_core_rbd"]
+        for module in modules:
+            if not os.path.isdir("/sys/module/{}".format(module)):
+                proc = subprocess.Popen(["modprobe", module])
+                retcode = proc.wait()
+                if retcode != 0:
+                    raise CephiSCSIError("Error loading module {}".format(module))
+
+    def _rbd_device_map(self):
+        if not os.path.exists("/dev/rbd/{}/{}".format(self.pool, self.image)):
+            proc = subprocess.Popen(["rbd", "-n", settings.config.cluster_client_name, "device",
+                                     "map", "-p", self.pool, self.image])
+            retcode = proc.wait()
+            if retcode != 0:
+                raise CephiSCSIError("Error mapping device {}.{}".format(self.pool, self.image))
+
+    def _rbd_device_unmap(self):
+        if os.path.exists("/dev/rbd/{}/{}".format(self.pool, self.image)):
+            proc = subprocess.Popen(["rbd", "-n", settings.config.cluster_client_name, "device",
+                                     "unmap", "-p", self.pool, self.image])
+            retcode = proc.wait()
+            if retcode != 0:
+                raise CephiSCSIError("Error unmapping device {}.{}".format(self.pool, self.image))
+
     def remove_dev_from_lio(self):
         lio_root = root.RTSRoot()
 
@@ -950,6 +1039,8 @@ class LUN(GWObject):
 
         try:
             so.delete()
+            if self.backstore == RBD:
+                self._rbd_device_unmap()
         except Exception as err:
             self.error = True
             self.error_msg = ("Delete from LIO/backstores failed - "
