@@ -166,6 +166,14 @@ TGT_SETTINGS = {
     "max_xmit_data_segment_length": IntSetting("max_xmit_data_segment_length",
                                                512, 16777215, 262144)}
 
+TGT_KERNEL_SETTINGS = {
+    "default_cmdsn_depth": IntSetting("default_cmdsn_depth", 1, 512, 64),
+    "default_erl": EnumSetting("default_erl", [0, 1, 2], 0),
+    "login_timeout": IntSetting("login_timeout", 5, 30, 15),
+    "netif_timeout": IntSetting("netif_timeout", 2, 15, 2),
+    "prod_mode_write_protect": EnumSetting("prod_mode_write_protect", [0, 1], 0),
+    "t10_pi": EnumSetting("t10_pi", [0, 1], 0)}
+
 SYS_SETTINGS = {
     "cluster_name": StrSetting("cluster_name", "ceph"),
     "pool": StrSetting("pool", "rbd"),
@@ -209,3 +217,32 @@ TCMU_DEV_STATUS_SETTINGS = {
     "lock_lost_cnt_threshhold": IntSetting("lock_lost_cnt_threshhold", 1, 1000000, 12),
     "status_check_interval": IntSetting("status_check_interval", 1, 600, 10),
     "stable_state_reset_count": IntSetting("stable_state_reset_count", 1, 600, 3)}
+
+KERNEL_SETTINGS = {
+    "block_size": EnumSetting("block_size", [512, 1024, 2048, 4096], 512),
+    "emulate_3pc": EnumSetting("emulate_3pc", [0, 1], 1),
+    "emulate_caw": EnumSetting("emulate_caw", [0, 1], 1),
+    "emulate_dpo": EnumSetting("emulate_dpo", [0, 1], 1),
+    "emulate_fua_read": EnumSetting("emulate_fua_read", [0, 1], 1),
+    "emulate_fua_write": EnumSetting("emulate_fua_write", [0, 1], 1),
+    "emulate_model_alias": EnumSetting("emulate_model_alias", [0, 1], 0),
+    "emulate_pr": EnumSetting("emulate_pr", [0, 1], 1),
+    "emulate_rest_reord": EnumSetting("emulate_rest_reord", [0, 1], 1),
+    "emulate_tas": EnumSetting("emulate_tas", [0, 1], 1),
+    "emulate_tpu": EnumSetting("emulate_tpu", [0, 1], 0),
+    "emulate_tpws": EnumSetting("emulate_tpws", [0, 1], 0),
+    "emulate_ua_intlck_ctrl": EnumSetting("emulate_ua_intlck_ctrl", [0, 1, 2], 0),
+    "emulate_write_cache": EnumSetting("emulate_write_cache", [0, 1], 0),
+    "enforce_pr_isids": EnumSetting("enforce_pr_isids", [0, 1], 1),
+    "force_pr_aptpl": EnumSetting("force_pr_aptpl", [0, 1], 0),
+    "is_nonrot": EnumSetting("is_nonrot", [0, 1], 1),
+    "max_unmap_block_desc_count": IntSetting("max_unmap_block_desc_count", 0, 4294967295, 1),
+    "max_unmap_lba_count": IntSetting("max_unmap_lba_count", 0, 4294967295, 8192),
+    "max_write_same_len": IntSetting("max_write_same_len", 0, 4294967295, 65535),
+    "optimal_sectors": IntSetting("optimal_sectors", 0, 4294967295, 8192),
+    "pi_prot_type": EnumSetting("pi_prot_type", [0, 1, 2, 3], 0),
+    "pi_prot_verify": EnumSetting("pi_prot_verify", [0, 1], 0),
+    "queue_depth": IntSetting("queue_depth", 0, 4294967295, 256),
+    "unmap_granularity": IntSetting("unmap_granularity", 0, 4294967295, 8192),
+    "unmap_granularity_alignment": IntSetting("unmap_granularity_alignment", 0, 4294967295, 0),
+    "unmap_zeroes_data": EnumSetting("unmap_zeroes_data", [0, 1], 0)}
