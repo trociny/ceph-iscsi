@@ -960,6 +960,11 @@ class LUN(GWObject):
             new_lun = RBDStorageObject(name=self.backstore_object_name,
                                        dev=dev,
                                        wwn=in_wwn)
+            path = glob.glob('/sys/kernel/config/target/core/rbd_*/{}/wwn/vendor_id'.format(
+                self.backstore_object_name))
+            if path:
+                with open(path[0], "w") as file_vendor:
+                    file_vendor.write("SUSE\n")
 
         except (RTSLibError, IOError) as err:
             self.error = True
