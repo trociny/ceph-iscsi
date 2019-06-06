@@ -84,6 +84,10 @@ BuildRequires: systemd-rpm-macros
 %{?systemd_requires}
 %endif
 
+%if 0%{?suse_version}
+Conflicts: lrbd < 3.0
+%endif
+
 %description
 Python package providing the modules used to handle the configuration of an
 iSCSI gateway, backed by Ceph RBD. The RPM installs configuration management
