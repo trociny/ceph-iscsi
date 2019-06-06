@@ -11,7 +11,10 @@ import sys
 import argparse
 import signal
 
+from pyparsing import (alphanums, OneOrMore, Optional, Regex, Suppress, Word)
+
 from configshell_fb import ConfigShell, ExecutionError
+from configshell_fb.shell import locatedExpr
 from gwcli.gateway import ISCSIRoot
 
 import ceph_iscsi_config.settings as settings
@@ -37,6 +40,25 @@ class GatewayCLI(ConfigShell):
                      'tree_round_nodes': True,
                      'tree_show_root': True,
                      }
+
+
+    def __init__(self, preferences_dir=None):
+        super(GatewayCLI, self).__init__(preferences_dir)
+        # Grammar of the command line
+        command = locatedExpr(Word(alphanums + '_'))('command')
+        var = Word(alphanums + ',=_\+/.<>()~@:-%[]')
+        value = var
+        keyword = Word(alphanums + '_\-')
+        kparam = locatedExpr(keyword + Suppress('=') + Optional(value, default=''))('kparams*')
+        pparam = locatedExpr(var)('pparams*')
+        parameter = kparam | pparam
+        parameters = OneOrMore(parameter)
+        bookmark = Regex('@([A-Za-z0-9:_.]|-)+')
+        pathstd = Regex('([A-Za-z0-9:_.\[\]]|-)*' + '/' + '([A-Za-z0-9:_.\[\]/]|-)*') \
+                | '..' | '.'
+        path = locatedExpr(bookmark | pathstd | '*')('path')
+        parser = Optional(path) + Optional(command) + Optional(parameters)
+        self._parser = parser
 
 
 def exception_handler(exception_type, exception, traceback,
