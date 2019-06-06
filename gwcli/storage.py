@@ -470,25 +470,6 @@ class Disks(UIGroup):
         """
         self.delete_disk(image_id, True)
 
-    def ui_command_delete(self, image_id):
-        """
-        Delete a given rbd image from the configuration and ceph. This is a
-        destructive action that could lead to data loss, so please ensure
-        the rbd image name is correct!
-
-        > delete <disk_name>
-        e.g.
-        > delete rbd/disk_1
-
-        "disk_name" refers to the name of the disk as shown in the UI, for
-        example rbd/disk_1.
-
-        Also note that the delete process is a synchronous task, so the larger
-        the rbd image is, the longer the delete will take to run.
-
-        """
-        self.delete_disk(image_id, False)
-
     def delete_disk(self, image_id, preserve_image):
 
         all_disks = []
