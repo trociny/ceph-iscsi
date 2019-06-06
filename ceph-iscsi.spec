@@ -48,7 +48,7 @@ Requires:       python-netifaces >= 0.10.4
 Requires:       python-rtslib >= 2.1.fb68
 Requires:       python-cryptography
 Requires:       python-flask >= 0.10.1
-Requires:       python-configshell >= 1.1.fb25
+Requires:       python-configshell >= 1.1.fb23
 %if 0%{?rhel} == 7
 Requires:       pyOpenSSL
 Requires:       python-requests
@@ -70,10 +70,10 @@ Requires:       python3-requests
 BuildRequires:  python-rpm-macros
 BuildRequires:  fdupes
 Requires:       python3-Flask >= 0.10.1
-Requires:       python3-configshell-fb >= 1.1.25
+Requires:       python3-configshell-fb >= 1.1.23
 %else
 Requires:       python3-flask >= 0.10.1
-Requires:       python3-configshell >= 1.1.fb25
+Requires:       python3-configshell >= 1.1.fb23
 %endif
 %endif
 
