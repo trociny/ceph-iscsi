@@ -34,9 +34,6 @@ class RBDDev(object):
         RBD: [
             # TODO Uncomment after PR https://github.com/ceph/ceph/pull/28009
             # 'RBD_FEATURE_MIGRATING',
-            'RBD_FEATURE_OBJECT_MAP',
-            'RBD_FEATURE_FAST_DIFF',
-            'RBD_FEATURE_DEEP_FLATTEN',
             'RBD_FEATURE_JOURNALING'
         ]
     }
