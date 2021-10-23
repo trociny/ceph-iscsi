@@ -1,5 +1,6 @@
 import glob
 import os
+import subprocess
 
 from rtslib_fb.target import Target, TPG, NetworkPortal, LUN
 from rtslib_fb.fabric import ISCSIFabricModule
@@ -17,9 +18,19 @@ from ceph_iscsi_config.discovery import Discovery
 from ceph_iscsi_config.alua import alua_create_group, alua_format_group_name
 from ceph_iscsi_config.client import GWClient, CHAP
 from ceph_iscsi_config.gateway_object import GWObject
-from ceph_iscsi_config.backstore import lookup_storage_object_by_disk
+from ceph_iscsi_config.backstore import lookup_storage_object_by_disk, is_rbd_backstore
 
 __author__ = 'pcuzner@redhat.com'
+
+def rbd_device_unmap(image_spec):
+    if not os.path.exists("/dev/rbd/{}".format(image_spec)):
+        return
+
+    proc = subprocess.Popen(["rbd", "-n", settings.config.cluster_client_name, "device",
+                             "unmap", image_spec])
+    retcode = proc.wait()
+    if retcode != 0:
+        raise CephiSCSIError("Error unmapping device {}".format(image_spec))
 
 
 class GWTarget(GWObject):
@@ -575,6 +586,8 @@ class GWTarget(GWObject):
 
             try:
                 so.delete()
+                if is_rbd_backstore(config, disk):
+                    rbd_device_unmap(disk)
             except RTSLibError as err:
                 self.logger.error("lio disk deletion failed {}".format(err))
                 if saved_err is None:
