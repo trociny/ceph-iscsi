@@ -6,6 +6,10 @@ from ceph_iscsi_config.utils import CephiSCSIError
 USER_RBD = 'user:rbd'
 RBD = 'rbd'
 
+def is_rbd_backstore(config, disk):
+    backstore = config.config["disks"][disk]["backstore"]
+    return backstore == RBD
+
 
 def lookup_storage_object_by_disk(config, disk):
     backstore = config.config["disks"][disk]["backstore"]
