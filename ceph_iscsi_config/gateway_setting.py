@@ -225,6 +225,7 @@ KERNEL_SETTINGS = {
     "emulate_dpo": EnumSetting("emulate_dpo", [0, 1], 1),
     "emulate_fua_read": EnumSetting("emulate_fua_read", [0, 1], 1),
     "emulate_fua_write": EnumSetting("emulate_fua_write", [0, 1], 1),
+    "emulate_legacy_capacity": EnumSetting("emulate_legacy_capacity", [0, 1], 1),
     "emulate_model_alias": EnumSetting("emulate_model_alias", [0, 1], 0),
     "emulate_pr": EnumSetting("emulate_pr", [0, 1], 1),
     "emulate_rest_reord": EnumSetting("emulate_rest_reord", [0, 1], 1),
