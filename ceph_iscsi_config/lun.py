@@ -6,6 +6,7 @@ import re
 import subprocess
 
 from time import sleep
+from inspect import getargspec
 
 from rtslib_fb import UserBackedStorageObject, RBDStorageObject, root
 from rtslib_fb.utils import RTSLibError
@@ -954,9 +955,21 @@ class LUN(GWObject):
             self._load_modules()
             self._rbd_device_map()
             dev = '/dev/rbd/{}/{}'.format(self.pool, self.image)
-            new_lun = RBDStorageObject(name=self.backstore_object_name,
-                                       dev=dev,
-                                       wwn=in_wwn)
+
+            if self.controls.get('emulate_legacy_capacity', True):
+                new_lun = RBDStorageObject(name=self.backstore_object_name,
+                                           dev=dev,
+                                           wwn=in_wwn)
+            else:
+                if 'disable_emulate_legacy_capacity' not in \
+                   getargspec(RBDStorageObject.__init__).args:
+                    raise RTSLibError(
+                        "rtslib needs disable_emulate_legacy_capacity support")
+                new_lun = RBDStorageObject(name=self.backstore_object_name,
+                                           dev=dev,
+                                           wwn=in_wwn,
+                                           disable_emulate_legacy_capacity=True)
+
             path = glob.glob('/sys/kernel/config/target/core/rbd_*/{}/wwn/vendor_id'.format(
                 self.backstore_object_name))
             if path:
