@@ -1224,6 +1224,9 @@ def _disk(pool, image):
                              " : {}".format(lun.error_msg))
                 return jsonify(message="Unable to establish LUN instance"), 500
 
+            for k, v in controls.items():
+                setattr(lun, k, v)
+
             lun.allocate(False, request.form.get('wwn'))
             if lun.error:
                 logger.error("LUN alloc problem - {}".format(lun.error_msg))
